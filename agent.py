@@ -17,6 +17,7 @@ import config
 import trace
 from tools import search_listings, suggest_outfit, create_fit_card
 from generate import ModelUnavailable
+import re
 
 
 # ── session state ─────────────────────────────────────────────────────────────
@@ -108,7 +109,84 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     session = new_session(query, wardrobe)
 
     # TODO: delete these two lines and build the loop.
-    session["error"] = "The planning loop isn't built yet — see the TODO in agent.py."
+    #session["error"] = "The planning loop isn't built yet — see the TODO in agent.py."
+    try:
+        #Step 1: Parse the query
+        description = query
+
+        price_match = re.search(
+            r"\b(?:under|below|less than|up to|max(?:imum)?)\s*\$?(\d+(?:\.\d{1,2})?)",
+            query,
+            re.IGNORECASE,
+        )
+
+        size_match = re.search(
+            r"\bsize\s+([A-Za-z0-9]+(?:/[A-Za-z0-9]+)?)",
+            query,
+            re.IGNORECASE,
+        )
+
+        max_price = float(price_match.group(1)) if price_match else None
+        size = size_match.group(1) if size_match else None
+
+        if price_match:
+            description = description.replace(price_match.group(0), "")
+        if size_match:
+            description = description.replace(size_match.group(0), "")
+
+        description = re.sub(
+            r"^(?:looking for|find me|find|show me|i want|want)\s+",
+            "",
+            description,
+            flags=re.IGNORECASE,
+        )
+
+        description = re.sub(r"\s+", " ", description).strip(" ,.")
+
+        session["parsed"] = {
+            "description": description,
+            "size" : size,
+            "max_price" : max_price,
+        }
+
+        # Step 3: Search listings.
+        trace.check_iterations(1)
+        session["search_results"] = search_listings(
+            description=session["parsed"]["description"],
+            size=session["parsed"]["size"],
+            max_price=session["parsed"]["max_price"],
+        )
+
+        # branch: stop if the search returned no matches
+        if not session["search_results"]:
+            session["error"] = (
+                "I couldn't find matching listings. Try using a broader "
+                "clothing description, removing the size filter, or "
+                "increasing your maximum price."
+            )
+            return session
+
+        # Step 3: select the first result 
+        trace.check_iterations(2)
+        session["selected_item"] = session["search_results"][0]
+
+        # Step 4: Suggest an outfit using values read from the session.
+        session["outfit_suggestion"] = suggest_outfit(
+            session["selected_item"],
+            session["wardrobe"],
+        )
+
+        # Step 5: Create a fit card using values read from the session.
+        trace.check_iterations(3)
+        session["fit_card"] = create_fit_card(
+            session["outfit_suggestion"],
+            session["selected_item"],
+        )
+    except ModelUnavailable as exc:
+        session["error"] = f"The model is unavailable: {exc}"
+    except RuntimeError as exc:
+        session["error"] = str(exc)
+
     return session
 
 
