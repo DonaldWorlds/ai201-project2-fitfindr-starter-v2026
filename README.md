@@ -40,6 +40,8 @@
 ## What This Does
 
 <!-- Three or four sentences: what a user asks for, and what they get back. -->
+FitFindr is a clothing search and outfit recommendation tool. A user can describe an item they want and optionally set a size or maximum price. The agent searches clothing listings, selects a matching item, uses AI to suggest outfits based on the user's wardrobe, and creates a short social media caption for the find.
+
 
 
 
@@ -59,7 +61,7 @@
 
 ### `search_listings`
 
-- **What it does:** Searches clothing listings for items matching a description and optionally filters by size and maximum price. okSize matching is case-insensitive and matches complete size labels or slash-separated alternatives. For example, M matches S/M but not XL.
+- **What it does:** Searches clothing listings for items matching a description and optionally filters by size and maximum price. Size matching is case-insensitive and matches complete size labels or slash-separated alternatives. For example, M matches S/M but not XL.
 - **Inputs:** <!-- name and type each: `max_price` (float), not "a price" --> description (str), size (str | None, optional), max_price (float | None, optional).
 - **Returns:** A list of matching listing dictionaries, sorted by relevance, containing id, title, description, category, style_tags, size, condition, price, colors, brand, and platform. Results are limited by config.SEARCH_RESULT_LIMIT.
 - **When it has nothing:** Returns an empty list ([]) if no listings match.
@@ -185,7 +187,7 @@ Nothing beats the effortlessly cool vibe of a broken-in pair of denim. These vin
 
 **Moment 2**
 
-- *What I asked for:* : I investigated why create_fit_card returned the same caption when I ran it multiple times.
+- **What I asked for:** I investigated why create_fit_card returned the same caption when I ran it multiple times.
 - *What came back:* The repeated output suggested that the response was being reused rather than newly generated each time.
 - *What I changed:* I checked config.py and found that caching was enabled by default. I ran the tool with AI201_CACHE=0 and confirmed that the captions varied. I kept the default configuration and documented how caching affected my test results.
 
