@@ -59,24 +59,24 @@
 
 ### `search_listings`
 
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Searches clothing listings for items matching a description and optionally filters by size and maximum price. okSize matching is case-insensitive and matches complete size labels or slash-separated alternatives. For example, M matches S/M but not XL.
+- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" --> description (str), size (str | None, optional), max_price (float | None, optional).
+- **Returns:** A list of matching listing dictionaries, sorted by relevance, containing id, title, description, category, style_tags, size, condition, price, colors, brand, and platform. Results are limited by config.SEARCH_RESULT_LIMIT.
+- **When it has nothing:** Returns an empty list ([]) if no listings match.
 
 ### `suggest_outfit`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Uses an AI model to suggest one or two outfits based on a selected clothing listing and the user's existing wardrobe.
+- **Inputs:** new_item (dict, a clothing listing), wardrobe (dict containing an items list of wardrobe item dictionaries).
+- **Returns:** A non-empty string containing outfit suggestions that name suitable wardrobe pieces when available.
+- **When it has nothing:** If the wardrobe is empty, returns general styling advice for the selected item instead of an empty string or an error.
 
 ### `create_fit_card`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Uses an AI model to write a short social media caption about a selected clothing find and its outfit suggestion.
+- **Inputs:** outfit (str, the outfit suggestion), new_item (dict, a clothing listing).
+- **Returns:** A string containing a two-to-four-sentence caption that mentions the item, price, and platform once each and describes its style.
+- **When it has nothing:** If outfit is empty or contains only whitespace, returns a descriptive message instead of raising an error.
 
 ---
 
@@ -95,11 +95,17 @@
 
 **Branch rule:**
 
-**Where it lives:** `agent.py::run_agent`
+If search_listings returns an empty list ([]), set session["error"] to a helpful message explaining that the user should change their search criteria. Return the session without calling suggest_outfit or create_fit_card.
 
-**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
+Otherwise, select the first listing from the search results and save it as session["selected_item"]. Pass the selected listing and the user's wardrobe to suggest_outfit, then save the result as session["outfit_suggestion"]. Pass the outfit suggestion and selected listing to create_fit_card, then save the result as session["fit_card"].
 
-**What moves through the session:** <!-- which fields, in what order -->
+**Implementation:** `agent.py::run_agent`
+
+**Query parsing:** Regular expressions and string processing.
+
+**How the query is parsed:** Use regular expressions to identify size and maximum price patterns in the user's query. Treat the remaining words as the item description. For example, vintage graphic tee size M under $30 becomes description vintage graphic tee, size M, and max_price 30.0.
+
+**What moves through the session:** The query is stored first, followed by parsed description, size, and maximum price. Search results are stored in search_results. The first result is saved as selected_item. The outfit suggestion is saved as outfit_suggestion, and the generated caption is saved as fit_card. If no listings match, an error message is saved in error and the loop stops.
 
 ---
 
