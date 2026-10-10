@@ -299,21 +299,28 @@ try 1: stopped early
      Look for a pattern. Three misses on the same tool is one problem, not
      three. -->
 
-| # | Criterion | Target | Verdict | How I decided |
-|---|---|---|---|---|
-| 1 |  |  |  |  |
-| 2 |  |  |  |  |
-| 3 |  |  |  |  |
-| 4 |  |  |  |  |
-| 5 |  |  |  |  |
+## Verdicts and Diagnoses
+
+| Criterion                                        | Target       | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict       |
+| ------------------------------------------------ | ------------ | ----- | ----- | ----- | ----- | ----- | ------------- |
+| 1. Matching query completes all three tools      | At least 4/5 | PASS  | PASS  | PASS  | PASS  | PASS  | **MET (5/5)** |
+| 2. Impossible query stops before the second tool | 5/5          | PASS  | PASS  | PASS  | PASS  | PASS  | **MET (5/5)** |
+| 3. Selected item passes through state unchanged  | 5/5          | PASS  | PASS  | PASS  | PASS  | PASS  | **MET (5/5)** |
+| 4. Fit card includes item details                | At least 4/5 | PASS  | PASS  | PASS  | PASS  | PASS  | **MET (5/5)** |
+| 5. Successful session has all outputs            | At least 4/5 | PASS  | PASS  | PASS  | PASS  | PASS  | **MET (5/5)** |
 
 **Diagnoses**
 
+* **Criterion 1 — MET (5/5):** Each matching-query trial completed the full chain: `search_listings`, `suggest_outfit`, and `create_fit_card`. The selected item, outfit suggestion, and fit card were produced. The mechanism is the normal successful branch in `agent.py::run_agent`.
+* **Criterion 2 — MET (5/5):** Each impossible-query trial stopped after `search_listings` returned an empty list. The agent stored an explanatory error in the session and did not call the later tools. The mechanism is the empty-results branch in `agent.py::run_agent`.
+* **Criterion 3 — MET (5/5):** The selected listing saved in `session["selected_item"]` matched the listing passed to `suggest_outfit` in every trial. The mechanism is the selected-item state assignment and subsequent tool call.
+* **Criterion 4 — MET (5/5):** Every fit card was non-empty, contained 2–4 sentences, and mentioned the selected item's details, price, and platform. The mechanism is the `create_fit_card` model output. The wording varied, but the required details remained present.
+* **Criterion 5 — MET (5/5):** Every successful session contained a selected item, a non-empty outfit suggestion, and a non-empty fit card. The mechanism is the successful branch's sequential session assignments in `agent.py::run_agent`.
 
+**Pattern:** The deterministic empty-search branch behaved consistently, and the successful branch preserved state and produced all three outputs across the recorded trials. The model-generated outfit and caption wording varied, but the required outputs remained present.
 
----
+**Were the targets too easy?** Criterion 3 is the clearest candidate to tighten: passing the same selected item through state is a basic correctness requirement, and 5/5 is appropriate but only tests this specific path. A stronger next test would check that the correct selected listing reaches the next tool across different search results, not just repeated trials of the same query. I am keeping the original criterion unchanged because it was measurable and was met.
 
----
 
 ## Loop Trace
 
