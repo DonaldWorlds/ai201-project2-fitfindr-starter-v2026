@@ -258,74 +258,145 @@ that produced it:
 
 ---
 
+---
+
 ## Loop Trace
 
-<!-- One full run, printed step by step, with the MCP call visible in it.
+### Happy path
 
-     `python app.py ask '...' --trace` once you've added the trace.step()
-     calls in Milestone 2.
+**Command used:**
 
-     Worth pasting BOTH the happy path and the empty-search path. The empty
-     one should be visibly shorter, because it stops. If your two traces are
-     the same length, your branch isn't working — and this is the fastest way
-     anyone will ever find that out. -->
+`python app.py ask 'striped rugby shirt under $40' --trace`
 
-**Happy path**
-
+```text
+[1] parse_query
+      in:  dict with keys: query
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: 4 items: Oversized Flannel Shirt — Plaid Red/Black, Oversized Crewneck Sweatshirt — Vintage Navy, Vintage Polo Shirt — Forest Green … +1 more
+[3] select_item
+      in:  dict with keys: result_count
+      out: Oversized Flannel Shirt — Plaid Red/Black ($22.0, thredUp)
+[4] suggest_outfit
+      in:  dict with keys: selected_item, wardrobe
+      out: Here are two outfit suggestions featuring your new oversized red and black flannel shirt...
+[5] create_fit_card
+      in:  dict with keys: outfit_suggestion, selected_item
+      out: Channeling total 90s grunge energy with this oversized red and black plaid flannel from thredUp...
 ```
 
+### Empty search
+
+**Command used:**
+
+`python app.py ask 'designer ballgown size XXS under $5' --trace`
+
+```text
+[1] parse_query
+      in:  dict with keys: query
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: [] (empty)
+[3] empty_search_branch
+      out: I couldn't find matching listings. Try using a broader clothing description, removing the size filter, or increasing your maximum price.
+      → No listings found; stopping
+
+I couldn't find matching listings. Try using a broader clothing description, removing the size filter, or increasing your maximum price.
+
+0 model calls this session
 ```
 
-**Empty search**
-
-```
-
-```
-
-**On the MCP move:** <!-- what changed in your code, and whether anything
-behaved differently afterwards. If the rewire didn't work, say exactly where it
-broke — the error text and the last thing that worked. That earns the point in
-full. -->
-
-
+**On the MCP move:** The search now runs through `call_tool("search_listings", ...)` via MCP. The trace shows the MCP search result before the branch decision. When the search returns an empty list, the agent stops and returns an actionable message without selecting an item or calling the outfit and fit-card tools.
 
 ---
 
+## Failure Tests
+
+### 1. Empty Search
+
+**Command used:**
+
+`python app.py ask 'designer ballgown size XXS under $5' --trace`
+
+**Message shown to the user:**
+
+```text
+I couldn't find matching listings. Try using a broader clothing description, removing the size filter, or increasing your maximum price.
+```
+
+**Result:** PASS
+
+**What I learned:** The agent stops when no listings are found and tells the user what to change. The trace confirms that the outfit and fit-card tools are not called.
+
+### 2. Empty Wardrobe
+
+**Command used:**
+
+`python app.py ask 'vintage graphic tee under $30' --empty-wardrobe`
+
+**Message or output shown to the user:**
+
+```text
+### General Styling Advice
+* Play with Proportions: Since this top is a fitted, cropped "baby tee," balance the silhouette by pairing it with baggy or relaxed-fitting bottoms.
+* Color Coordination: Pull out the pastel pinks and purples from the butterfly graphic by matching them with your accessories.
+* Layering: It looks great on its own in warm weather, but you can also layer it under a zip-up hoodie or a vintage leather jacket for cooler days.
+```
+
+The outfit tool also returned outfit ideas, and the fit-card tool generated a caption.
+
+**Result:** PASS
+
+**What I learned:** The outfit tool returns useful general styling advice even when the wardrobe has no items. The agent completes the run without crashing or returning an empty string.
+
+### 3. Model Unavailable
+
+**Command used:**
+
+`python app.py ask 'orange corduroy overalls with silver buttons under $47'`
+
+**Message shown to the user:**
+
+```text
+The model is unavailable: The model rejected your API key. Check GEMINI_API_KEY in your .env file, or create a fresh key at aistudio.google.com.. Check your model API key and connection in .env, then retry with a new query.
+```
+
+**Result:** PASS, provided the API key was intentionally changed for this test.
+
+**What I learned:** The model-unavailable handler catches the rejected API key and gives the user a next step instead of displaying a raw stack trace. The output shows one model call, confirming that this request reached the model rather than being served from cache.
+
+**Note:** Restore the original API key in `.env` after testing.
+
 ## The Improvement
 
-<!-- What you changed, why your diagnosis pointed at it, and the after-run in
-     the same table format. One change, measured properly.
+**What I changed:** Added `trace.step()` calls in `agent.py::run_agent` to record query parsing, MCP search, the empty-search branch, item selection, outfit suggestions, and fit-card creation.
 
-     `python run_eval.py --label after` -->
-
-**What I changed:**
-
-**Which failure it was meant to fix:**
+**Which failure it was meant to fix:** The lack of a visible trace made it difficult to verify the planning loop and diagnose where a run stopped.
 
 ### Run Log — After
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
-|---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| --------- | ------ | ----- | ----- | ----- | ----- | ----- | ------- |
+| 1.        |        |       |       |       |       |       |         |
+| 2.        |        |       |       |       |       |       |         |
+| 3.        |        |       |       |       |       |       |         |
+| 4.        |        |       |       |       |       |       |         |
+| 5.        |        |       |       |       |       |       |         |
 
-**Did it help, and how do I know:**
-
-<!-- If it made things worse, say that. Honestly reported, that earns full
-     credit and is more interesting than one that worked. -->
-
-
+**Did it help, and how do I know:** The trace now displays the MCP search and the subsequent planning steps in order. The empty-search trace ends at the branch, confirming that the agent stops when no listings are returned. The evaluation table still needs to be completed using `python run_eval.py --label after`.
 
 ---
 
 ## What's Still Broken
 
-<!-- For each criterion still missed: what you'd do, and why you stopped where
-     you did. "I ran out of time" is fine if it's true. Pretending nothing is
-     left is not. -->
+The successful search for a striped rugby shirt returned an oversized flannel instead. This suggests the search results may not always match the user's requested description closely enough.
+
+The model-unavailable test confirmed that the agent catches a rejected API key and displays an error message. The original API key must be restored in `.env` after testing.
+
+The Run Log — After table still needs to be completed using the actual results from `python run_eval.py --label after`. Search relevance and the evaluation results remain areas to investigate.
+
 
 
 
