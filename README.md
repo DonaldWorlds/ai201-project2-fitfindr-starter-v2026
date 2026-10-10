@@ -172,6 +172,11 @@ Nothing beats the effortlessly cool vibe of a broken-in pair of denim. These vin
 
 ## How I Used AI
 
+**Moment 3 — Evaluating the agent and reviewing traces**
+
+I used AI to help review the evaluation criteria, inspect the run traces, and interpret the results from five trials per criterion. The traces helped me confirm that the MCP search was followed by item selection and planning, and that an empty search stopped before the later tools ran. AI also helped me identify that my new query had changed the fit-card scenario rather than the state-passing scenario I originally intended to test. I used the recorded output to write the evaluation results and document the remaining test-coverage limitation.
+
+
 <!-- Two specific moments. What you asked, what came back, what you changed.
 
      "I used Claude to help me code" is not enough.
@@ -447,25 +452,34 @@ The model is unavailable: The model rejected your API key. Check GEMINI_API_KEY 
 
 ### Run Log — After
 
-| Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
-| --------- | ------ | ----- | ----- | ----- | ----- | ----- | ------- |
-| 1.        |        |       |       |       |       |       |         |
-| 2.        |        |       |       |       |       |       |         |
-| 3.        |        |       |       |       |       |       |         |
-| 4.        |        |       |       |       |       |       |         |
-| 5.        |        |       |       |       |       |       |         |
+| Criterion                                        | Target       | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict   |
+| ------------------------------------------------ | ------------ | ----- | ----- | ----- | ----- | ----- | --------- |
+| 1. Matching query completes all three tools      | At least 4/5 | MET   | MET   | MET   | MET   | MET   | MET (5/5) |
+| 2. Impossible query stops before the second tool | 5/5          | MET   | MET   | MET   | MET   | MET   | MET (5/5) |
+| 3. Selected item passes through state unchanged  | 5/5          | MET   | MET   | MET   | MET   | MET   | MET (5/5) |
+| 4. Fit card includes item details                | At least 4/5 | MET   | MET   | MET   | MET   | MET   | MET (5/5) |
+| 5. Successful session has all outputs            | At least 4/5 | MET   | MET   | MET   | MET   | MET   | MET (5/5) |
 
-**Did it help, and how do I know:** The trace now displays the MCP search and the subsequent planning steps in order. The empty-search trace ends at the branch, confirming that the agent stops when no listings are returned. The evaluation table still needs to be completed using `python run_eval.py --label after`.
+**Did it help, and how do I know?**
 
----
+The updated Criterion 4 scenario uses a different search query, selecting an oversized red-and-black flannel shirt for all five trials. All five fit cards included details about the selected item, and the other four criteria continued to pass. This improves coverage of the fit-card behavior for another item, although it does not establish a change in agent behavior.
 
-## What's Still Broken
 
-The successful search for a striped rugby shirt returned an oversized flannel instead. This suggests the search results may not always match the user's requested description closely enough.
+### What's Still Broken
 
-The model-unavailable test confirmed that the agent catches a rejected API key and displays an error message. The original API key must be restored in `.env` after testing.
+All five criteria passed in the final recorded evaluation, with five successful trials per criterion. However, passing these tests does not prove that every possible input will work.
 
-The Run Log — After table still needs to be completed using the actual results from `python run_eval.py --label after`. Search relevance and the evaluation results remain areas to investigate.
+* **Criterion 1 — Matching query completes all three tools:** No failures appeared in the five recorded trials. I would test more clothing descriptions, price limits, and sizes to check how the agent handles different valid queries.
+* **Criterion 2 — Impossible query stops early:** All five trials stopped after the empty-search branch. I would test additional no-result queries to confirm that the agent consistently avoids calling later tools when no listings are found.
+* **Criterion 3 — Selected item passes through state unchanged:** All five trials passed, but they used the same query and selected item. I would change this scenario to use a different matching query and verify that the selected listing is passed unchanged to the next tool. I stopped before correcting this specific scenario because the query change was applied to Criterion 4 instead.
+* **Criterion 4 — Fit card includes item details:** All five trials passed with a different query that selected an oversized red-and-black flannel shirt. I would test additional item types to check whether the fit card consistently includes the correct item details.
+* **Criterion 5 — Successful session has all outputs:** All five trials produced the expected outputs. I would test more successful queries and edge cases to look for missing or inconsistent session fields.
+
+The main remaining limitation is test coverage. The evaluation demonstrates that the current scenarios pass, but it does not guarantee that the agent will behave correctly for every possible query or listing.
+
+### MCP Move
+
+The listing search is now called through the Model Context Protocol (MCP). The trace shows `search_listings (via MCP)` between query parsing and item selection. The successful path still proceeds through item selection, outfit suggestions, and fit-card creation, while the empty-search path stops early. I did not observe a change in the agent's intended behavior from the trace; the main difference is how the listing-search tool is connected and called.
 
 
 

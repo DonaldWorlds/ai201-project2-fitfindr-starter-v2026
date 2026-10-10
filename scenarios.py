@@ -34,7 +34,29 @@ SCENARIOS = [
         "query": "denim jacket under $50",
         "wardrobe": "empty",
         "criterion": None,
+    },    
+    {
+        # Criterion 3: state passes the selected item to the next tool.
+        "name": "selected item passes through state",
+        "query": "vintage graphic tee under $30",
+        "wardrobe": "example",
+        "criterion": 3,
     },
+    {
+        # Criterion 4: fit card includes the selected item's details.
+        "name": "fit card includes item details",
+        "query": "striped rugby shirt under $40",
+        "wardrobe": "example",
+        "criterion": 4,
+    },
+    {
+        # Criterion 5: successful run leaves all output fields populated.
+        "name": "successful session has all outputs",
+        "query": "denim jacket under $50",
+        "wardrobe": "example",
+        "criterion": 5,
+    },
+
     # TODO: add what your criteria 3, 4 and 5 need.
     #
     # Set "criterion" to the number in criteria.md that the scenario tests.
